@@ -53,6 +53,8 @@ static camera_config_t camera_config = {
     .fb_count = 1       //if more than one, i2s runs in continuous mode. Use only with JPEG
 };
 
+static char s_pic_name[64];
+
 static void clear_auth_token()
 {
   xEventGroupClearBits(eventGroup, HAS_AUTH_TOKEN);
@@ -68,19 +70,16 @@ static void take_picture_and_upload_to_google_storage()
   time_t now = 0;
   time(&now);
   localtime_r(&now, &timeinfo);
-  char *pic_name = malloc(sizeof("YYYY-mm-dd_hh-MM-ss.jpg"));
-  sprintf(pic_name, "%04d-%02d-%02d_%02d-%02d-%02d.jpg", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  snprintf(s_pic_name, sizeof(s_pic_name), "%04d-%02d-%02d_%02d-%02d-%02d.jpg", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
 
-  ESP_LOGI(TAG, "Picture %s taken.", pic_name);
-  ESP_LOGI(TAG, "Uploading %s...", pic_name);
+  ESP_LOGI(TAG, "Picture %s taken.", s_pic_name);
+  ESP_LOGI(TAG, "Uploading %s...", s_pic_name);
 
-  esp_err_t err = gcp_storage_insert_object(pic_name, (const char *)pic->buf, pic->len);
+  esp_err_t err = gcp_storage_insert_object(s_pic_name, (const char *)pic->buf, pic->len);
   if (err == ESP_FAIL)
   {
     clear_auth_token(err);
   }
-
-  free(pic_name);
 }
 
 static void initialize_sntp(void)
@@ -97,7 +96,7 @@ static void task_gcp()
   while (1)
   {
     EventBits_t bit = xEventGroupWaitBits(eventGroup, (WIFI_CONNECTED | SYNC_NTP | HAS_AUTH_TOKEN), false, false, portMAX_DELAY);
-    esp_err_t err;
+    //esp_err_t err;
 
     if (bit == WIFI_CONNECTED)
     {
